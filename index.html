@@ -74,6 +74,7 @@ input:focus{outline:none;border-bottom-color:var(--crimson)}
 .lbl.major{font-size:13px;font-weight:600;color:var(--crimson)}
 .hide-minor .lbl.minor{display:none}
 #map:not(.hide-minor) .lbl.zone{display:none}
+#map.deep .lbl{display:none}
 .pin{width:30px;height:40px;cursor:grab}
 .maplibregl-ctrl-attrib{font-size:11px}
 .maplibregl-cooperative-gesture-screen{font-family:var(--body);font-size:18px}
@@ -248,13 +249,23 @@ const AREAS=[
 ];
 const NCR_BOUNDS=[[76.86,28.30],[77.54,29.02]];        // what you see at first
 const NCR_MAX=[[76.70,28.20],[77.70,29.12]];           // how far you can pan
+function nearestPlace(lat,lng){
+  if(!map||!map.getLayer("places")) return "";
+  const p=map.project([lng,lat]), r=140;
+  const feats=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:["places"]});
+  let best="", bd=1e9;
+  for(const f of feats){ const c=f.geometry.coordinates, d=km({lat,lng},{lat:c[1],lng:c[0]});
+    const n=f.properties["name:en"]||f.properties.name_en||f.properties.name; if(n && d<bd && /^[\x00-\x7F]+$/.test(n)){bd=d;best=n;} }
+  return bd<6 ? best : "";
+}
 function nearestArea(lat,lng){
+  const p=nearestPlace(lat,lng); if(p) return p;
   let best=null, bd=1e9;
   for(const a of AREAS){ if(a[3]===2) continue; const d=km({lat,lng},{lat:a[1],lng:a[2]}); if(d<bd){bd=d;best=a[0];} }
   return best||"";
 }
 const ROADS=(...c)=>["in",["get","class"],["literal",c]];
-const MAP_STYLE={version:8,
+const MAP_STYLE={version:8,glyphs:"https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sources:{omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
   layers:[
    {id:"bg",type:"background",paint:{"background-color":"#f3f1ea"}},
@@ -262,10 +273,19 @@ const MAP_STYLE={version:8,
    {id:"park",type:"fill",source:"omt","source-layer":"park",paint:{"fill-color":"#e4e4cf"}},
    {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":"#e3c98a"}},
    {id:"river",type:"line",source:"omt","source-layer":"waterway",filter:["==",["get","class"],"river"],paint:{"line-color":"#d9b25a","line-width":["interpolate",["linear"],["zoom"],9,1.5,14,4]}},
-   {id:"minor",type:"line",source:"omt","source-layer":"transportation",minzoom:13,filter:ROADS("minor","tertiary"),paint:{"line-color":"#cfd3e6","line-width":1}},
-   {id:"sec",type:"line",source:"omt","source-layer":"transportation",minzoom:11,filter:ROADS("secondary"),paint:{"line-color":"#aab3d6","line-width":["interpolate",["linear"],["zoom"],11,.6,14,2]}},
-   {id:"pri",type:"line",source:"omt","source-layer":"transportation",filter:ROADS("primary"),paint:{"line-color":"#7f8fc7","line-width":["interpolate",["linear"],["zoom"],9,.6,14,2.5]}},
-   {id:"trunk",type:"line",source:"omt","source-layer":"transportation",filter:ROADS("trunk","motorway"),paint:{"line-color":"#26408c","line-width":["interpolate",["linear"],["zoom"],9,1.2,14,4]}}
+   {id:"minor",type:"line",source:"omt","source-layer":"transportation",minzoom:12.5,filter:ROADS("minor","service"),paint:{"line-color":"#d9dcea","line-width":["interpolate",["linear"],["zoom"],12.5,.4,16,2.5]}},
+   {id:"ter",type:"line",source:"omt","source-layer":"transportation",minzoom:11,filter:ROADS("tertiary"),paint:{"line-color":"#c3c9e2","line-width":["interpolate",["linear"],["zoom"],11,.4,16,3]}},
+   {id:"sec",type:"line",source:"omt","source-layer":"transportation",minzoom:9.5,filter:ROADS("secondary"),paint:{"line-color":"#aab3d6","line-width":["interpolate",["linear"],["zoom"],9.5,.4,16,3.5]}},
+   {id:"pri",type:"line",source:"omt","source-layer":"transportation",filter:ROADS("primary"),paint:{"line-color":"#7f8fc7","line-width":["interpolate",["linear"],["zoom"],8,.5,16,4.5]}},
+   {id:"trunk",type:"line",source:"omt","source-layer":"transportation",filter:ROADS("trunk","motorway"),paint:{"line-color":"#26408c","line-width":["interpolate",["linear"],["zoom"],8,1,16,6]}},
+   {id:"metro",type:"line",source:"omt","source-layer":"transportation",minzoom:11,filter:ROADS("transit","rail"),paint:{"line-color":"#a3232c","line-opacity":.35,"line-width":1,"line-dasharray":[3,2]}},
+   // local names straight from the map data: more appear as you zoom
+   {id:"places",type:"symbol",source:"omt","source-layer":"place",minzoom:10.2,
+    filter:["in",["get","class"],["literal",["suburb","quarter","neighbourhood","town","village"]]],
+    layout:{"text-field":["coalesce",["get","name:en"],["get","name_en"],["get","name"]],"text-font":["Noto Sans Italic"],
+      "text-size":["interpolate",["linear"],["zoom"],10,11,14,14],"text-max-width":7,"text-padding":4,
+      "symbol-sort-key":["match",["get","class"],"town",0,"suburb",1,"quarter",2,3]},
+    paint:{"text-color":"#26408c","text-halo-color":"#f3f1ea","text-halo-width":1.6}}
   ]};
 let map=null, pin=null;
 const PIN_SVG='<svg class="pin" viewBox="0 0 30 40"><path d="M15 39C15 39 2 23 2 14a13 13 0 0126 0c0 9-13 25-13 25z" fill="#a3232c" stroke="#fbf3e4" stroke-width="2"/><circle cx="15" cy="14" r="5" fill="#d9b25a"/></svg>';
@@ -284,17 +304,17 @@ function setLoc(lat,lng){
 }
 function initMap(){
   if(map||!window.maplibregl){ if(!window.maplibregl) status($("locStatus"),"The map didn't load. Check your connection and refresh.","err"); return; }
-  map=new maplibregl.Map({container:"map",style:MAP_STYLE,bounds:NCR_BOUNDS,maxBounds:NCR_MAX,minZoom:7.5,maxZoom:15,
+  map=new maplibregl.Map({container:"map",style:MAP_STYLE,bounds:NCR_BOUNDS,maxBounds:NCR_MAX,minZoom:7.5,maxZoom:16,
     dragRotate:false,pitchWithRotate:false,cooperativeGestures:true,attributionControl:false});
   map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-left");
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
-  AREAS.forEach(([n,lat,lng,major])=>{
+  AREAS.filter(a=>a[3]).forEach(([n,lat,lng,major])=>{
     const el=document.createElement("div"); el.className="lbl "+(major===2?"major zone":major?"major":"minor"); el.textContent=n;
     const anchor = lng<76.97 ? "left" : lng>77.42 ? "right" : lat>28.95 ? "top" : "center";
     new maplibregl.Marker({element:el,anchor}).setLngLat([lng,lat]).addTo(map);
   });
-  const zoomLabels=()=>$("map").classList.toggle("hide-minor", map.getZoom()<10.4);
+  const zoomLabels=()=>{ const z=map.getZoom(); $("map").classList.toggle("hide-minor", z<10.4); $("map").classList.toggle("deep", z>=10.6); };
   map.on("zoom",zoomLabels); zoomLabels();
   map.on("click",e=>setLoc(e.lngLat.lat,e.lngLat.lng));
   map.once("load",()=>{ if(S.lat==null) map.fitBounds(NCR_BOUNDS,{animate:false,padding:4}); });

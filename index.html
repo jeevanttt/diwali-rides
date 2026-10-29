@@ -237,7 +237,7 @@ const AREAS=[
  ["Sonipat",28.99,77.02,1],["Kundli",28.87,77.12],["Narela",28.85,77.09],["Bahadurgarh",28.69,76.93,1],
  ["Rohini",28.73,77.11,1],["Pitampura",28.70,77.14],["Model Town",28.715,77.19],["Civil Lines",28.68,77.225],
  ["Punjabi Bagh",28.67,77.13],["Rajouri Garden",28.645,77.12],["Paschim Vihar",28.67,77.10],["Vikaspuri",28.64,77.07],
- ["Janakpuri",28.62,77.085],["Uttam Nagar",28.62,77.055],["Dwarka",28.58,77.05,1],["Central Delhi",28.64,77.21,2],["East Delhi",28.635,77.295,2],["West Delhi",28.645,77.09,2],["Najafgarh",28.61,76.98],
+ ["Janakpuri",28.62,77.085],["Uttam Nagar",28.62,77.055],["Dwarka",28.58,77.05,1],["Delhi",28.645,77.215,2],["Najafgarh",28.61,76.98],
  ["Karol Bagh",28.65,77.19],["Connaught Place",28.633,77.219],["Shahdara",28.675,77.29],["Laxmi Nagar",28.63,77.28],
  ["Mayur Vihar",28.605,77.30],["Aerocity",28.55,77.12],["Vasant Kunj",28.52,77.155],["Hauz Khas",28.55,77.20],
  ["Saket",28.52,77.21,1],["Lajpat Nagar",28.57,77.24],["Greater Kailash",28.54,77.24],["Okhla",28.53,77.275],
@@ -246,7 +246,7 @@ const AREAS=[
  ["Gurugram",28.46,77.03,1],["Cyber City",28.495,77.09],["Golf Course Rd",28.445,77.10],["Sohna Road",28.405,77.045],
  ["New Gurgaon",28.40,76.98],["Manesar",28.36,76.94],["Faridabad",28.41,77.31,1],["Ballabhgarh",28.34,77.32]
 ];
-const NCR_BOUNDS=[[76.86,28.30],[77.54,29.03]];        // what you see at first
+const NCR_BOUNDS=[[76.80,28.27],[77.60,29.05]];        // what you see at first
 const NCR_MAX=[[76.70,28.20],[77.70,29.12]];           // how far you can pan
 function nearestArea(lat,lng){
   let best=null, bd=1e9;
@@ -284,8 +284,9 @@ function setLoc(lat,lng){
 }
 function initMap(){
   if(map||!window.maplibregl){ if(!window.maplibregl) status($("locStatus"),"The map didn't load. Check your connection and refresh.","err"); return; }
-  map=new maplibregl.Map({container:"map",style:MAP_STYLE,bounds:NCR_BOUNDS,fitBoundsOptions:{padding:{top:22,bottom:12,left:34,right:46}},maxBounds:NCR_MAX,minZoom:8.5,maxZoom:15,
-    dragRotate:false,pitchWithRotate:false,cooperativeGestures:true,attributionControl:{compact:true}});
+  map=new maplibregl.Map({container:"map",style:MAP_STYLE,bounds:NCR_BOUNDS,maxBounds:NCR_MAX,minZoom:8.5,maxZoom:15,
+    dragRotate:false,pitchWithRotate:false,cooperativeGestures:true,attributionControl:false});
+  map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-left");
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
   AREAS.forEach(([n,lat,lng,major])=>{

@@ -28,6 +28,7 @@ const NEAR_KM = 7;
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;min-height:100%}
 body{
   background:var(--lapis) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23d9b25a' stroke-width='1.6' opacity='.85'%3E%3Cpath d='M0 60c20-18 40 18 60 0s40 18 60 0'/%3E%3Cpath d='M60 0c-18 20 18 40 0 60s18 40 0 60'/%3E%3C/g%3E%3Cg fill='%23d9b25a'%3E%3Cg transform='translate(30 30)'%3E%3Cellipse rx='4' ry='9' transform='translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(72) translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(144) translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(216) translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(288) translate(0 -8)'/%3E%3Ccircle r='4' fill='%23b8862e'/%3E%3C/g%3E%3Cg transform='translate(90 90)'%3E%3Cellipse rx='3.5' ry='8' transform='rotate(36) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(108) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(180) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(252) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(324) translate(0 -7)'/%3E%3Ccircle r='3.5' fill='%23b8862e'/%3E%3C/g%3E%3Cellipse cx='88' cy='34' rx='4' ry='9' transform='rotate(40 88 34)'/%3E%3Cellipse cx='32' cy='86' rx='4' ry='9' transform='rotate(-40 32 86)'/%3E%3Ccircle cx='60' cy='60' r='3'/%3E%3C/g%3E%3C/svg%3E") 0 0/120px 120px;
@@ -134,7 +135,7 @@ body.board .scrim{opacity:1;pointer-events:auto}
   <!-- 1. who + where -->
   <section class="screen" id="s1">
     <input id="name" placeholder="Your name" autocomplete="given-name" maxlength="40">
-    <input id="area" placeholder="Coming from (e.g. Saket)" maxlength="60">
+    <input id="area" type="hidden">
     <button class="btn blue" id="locBtn" type="button">Enter Location</button>
     <div class="or">or</div>
     <div class="small"><input id="pin" placeholder="Paste a Google Maps pin" inputmode="url"></div>
@@ -239,8 +240,9 @@ function parsePin(s){
 }
 async function setLoc(lat,lng,label){
   S.lat=lat; S.lng=lng;
-  if(!$("area").value.trim()){ const a = await reverseArea(lat,lng); if(a) $("area").value=a; }
-  status($("locStatus"), "Location set"+(label?" · "+label:""), "ok");
+  status($("locStatus"),"Location set","ok");
+  const a = await reverseArea(lat,lng); $("area").value = a || "";
+  if(S.lat===lat) status($("locStatus"), "Location set"+(a?" · near "+a:""), "ok");
   $("locBtn").textContent="Location added"; $("locBtn").className="btn done";
 }
 
@@ -268,15 +270,9 @@ $("pin").addEventListener("input", () => {
 });
 let pinT;
 $("next1").onclick = async () => {
-  const name=$("name").value.trim(), area=$("area").value.trim();
+  const name=$("name").value.trim();
   if(!name) return status($("locStatus"),"Add your name.","err");
-  if(S.lat==null){
-    if(!area) return status($("locStatus"),"Tap Enter Location, or tell us where you're coming from.","err");
-    status($("locStatus"),"Looking up "+area+"…");
-    const g=await geocode(area);
-    if(!g) return status($("locStatus"),"Couldn't find "+area+". Try Enter Location.","err");
-    S.lat=g.lat; S.lng=g.lng;
-  }
+  if(S.lat==null) return status($("locStatus"),"Tap Enter Location, or paste a Google Maps pin.","err");
   $("hi").textContent="Hi "+name.split(" ")[0];
   show(2);
 };

@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&display=swap">
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 /* ================== SET THESE ================== */
 // 1. The party venue. Leave lat/lng null until you have them.
@@ -66,17 +66,16 @@ input:focus{outline:none;border-bottom-color:var(--crimson)}
 .btn.done{background:#eae6d6;color:var(--ink);border:1px solid var(--gold-rule)}
 .btn:disabled{opacity:.45;cursor:default}
 .link{background:none;border:0;font:italic 19px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px}
-.where{position:relative}
-.sugg{list-style:none;margin:0;padding:0;position:absolute;left:0;right:0;top:100%;z-index:15;background:var(--paper);border:1px solid var(--line);border-top:0;box-shadow:0 10px 24px rgba(20,30,70,.18);text-align:left;max-height:300px;overflow:auto}
-.sugg li{padding:12px 14px;cursor:pointer;border-top:1px solid var(--line);line-height:1.2}
-.sugg li:first-child{border-top:0}
-.sugg li b{display:block;font-weight:600}
-.sugg li span{font-style:italic;color:var(--muted);font-size:17px}
-.sugg li:hover,.sugg li.on{background:#e8e5da}
-.sugg .none{cursor:default;font-style:italic;color:var(--muted)}
-#map{height:170px;border:1px solid var(--gold-rule);border-radius:3px;z-index:1}
-.maphint{font-style:italic;color:var(--muted);font-size:16px;margin-top:-8px}
-.leaflet-container{font-family:var(--body);background:#e9e6dc}
+.mapwrap{position:relative;margin:0 -6px}
+#map{height:min(380px,52svh);border:1px solid var(--gold-rule);border-radius:3px;background:#f3f1ea}
+.maphint{font-style:italic;color:var(--muted);font-size:17px;margin-top:-6px}
+.maphint b{font-style:normal;color:var(--ink);font-weight:600}
+.lbl{font-family:var(--caps);font-size:11px;letter-spacing:.06em;color:var(--ink);text-transform:uppercase;white-space:nowrap;pointer-events:none;text-shadow:0 0 3px #f3f1ea,0 0 3px #f3f1ea,0 0 6px #f3f1ea}
+.lbl.major{font-size:13px;font-weight:600;color:var(--crimson)}
+.hide-minor .lbl.minor{display:none}
+.pin{width:30px;height:40px;cursor:grab}
+.maplibregl-ctrl-attrib{font-size:11px}
+.maplibregl-cooperative-gesture-screen{font-family:var(--body);font-size:18px}
 .or{font-style:italic;color:var(--muted);font-size:18px;margin:-4px 0}
 .status{font-style:italic;font-size:19px;color:var(--muted);min-height:1.3em}
 .status.ok{color:#2f6b3a}
@@ -148,14 +147,9 @@ body.board .scrim{opacity:1;pointer-events:auto}
   <section class="screen" id="s1">
     <input id="name" placeholder="Your name" autocomplete="given-name" maxlength="40">
     <input id="area" type="hidden">
-    <div class="where">
-      <input id="q" placeholder="Where are you coming from?" autocomplete="off" autocapitalize="words" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="sugg" aria-expanded="false">
-      <ul class="sugg" id="sugg" role="listbox" hidden></ul>
-    </div>
-    <div id="map" hidden></div>
-    <div class="maphint" id="maphint" hidden>Drag the pin if it's a little off</div>
+    <p class="maphint" id="maphint">Tap the map where you're coming from</p>
+    <div class="mapwrap"><div id="map" role="application" aria-label="Map of Delhi NCR. Tap to drop your pin."></div></div>
     <div class="status" id="locStatus"></div>
-    <button class="link" id="locBtn" type="button">or use my current location</button>
     <div class="push"><button class="btn red" id="next1" type="button">Next</button></div>
   </section>
 
@@ -236,121 +230,76 @@ const km = (a,b) => { const R=6371, r=Math.PI/180, dLa=(b.lat-a.lat)*r, dLo=(b.l
   const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
 const fmtKm = d => d<1 ? "under 1 km away" : Math.round(d)+" km away";
 
-async function reverseArea(lat,lng){
-  try{
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&lat=${lat}&lon=${lng}`,{headers:{"Accept-Language":"en"}});
-    const a = (await r.json()).address||{};
-    return a.suburb||a.neighbourhood||a.city_district||a.town||a.city||a.county||"";
-  }catch{ return ""; }
+/* ---------- screen 1: NCR map ---------- */
+// [name, lat, lng, major?]
+const AREAS=[
+ ["Sonipat",28.99,77.02,1],["Kundli",28.87,77.12],["Narela",28.85,77.09],["Bahadurgarh",28.69,76.93,1],
+ ["Rohini",28.73,77.11,1],["Pitampura",28.70,77.14],["Model Town",28.715,77.19],["Civil Lines",28.68,77.225],
+ ["Punjabi Bagh",28.67,77.13],["Rajouri Garden",28.645,77.12],["Paschim Vihar",28.67,77.10],["Vikaspuri",28.64,77.07],
+ ["Janakpuri",28.62,77.085,1],["Uttam Nagar",28.62,77.055],["Dwarka",28.58,77.05,1],["Najafgarh",28.61,76.98],
+ ["Karol Bagh",28.65,77.19],["Connaught Place",28.63,77.22,1],["Shahdara",28.675,77.29],["Laxmi Nagar",28.63,77.28,1],
+ ["Mayur Vihar",28.605,77.30],["Aerocity",28.55,77.12],["Vasant Kunj",28.52,77.155],["Hauz Khas",28.55,77.20],
+ ["Saket",28.52,77.21,1],["Lajpat Nagar",28.57,77.24],["Greater Kailash",28.54,77.24],["Okhla",28.53,77.275],
+ ["Chhatarpur",28.50,77.18],["Noida",28.575,77.33,1],["Noida Sec 62",28.62,77.365],["Noida Expressway",28.53,77.39],
+ ["Indirapuram",28.64,77.37],["Ghaziabad",28.67,77.44,1],["Greater Noida",28.47,77.50,1],
+ ["Gurugram",28.46,77.03,1],["Cyber City",28.495,77.09],["Golf Course Rd",28.445,77.10],["Sohna Road",28.405,77.045],
+ ["New Gurgaon",28.40,76.98],["Manesar",28.36,76.94],["Faridabad",28.41,77.31,1],["Ballabhgarh",28.34,77.32]
+];
+const NCR_BOUNDS=[[76.86,28.30],[77.54,29.03]];        // what you see at first
+const NCR_MAX=[[76.70,28.20],[77.70,29.12]];           // how far you can pan
+function nearestArea(lat,lng){
+  let best=null, bd=1e9;
+  for(const a of AREAS){ const d=km({lat,lng},{lat:a[1],lng:a[2]}); if(d<bd){bd=d;best=a[0];} }
+  return best||"";
 }
-async function geocode(q){
-  try{
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(q)}`,{headers:{"Accept-Language":"en"}});
-    const j = await r.json(); return j[0] ? {lat:+j[0].lat,lng:+j[0].lon} : null;
-  }catch{ return null; }
-}
-function parsePin(s){
-  s = decodeURIComponent(s||"");
-  const pats=[/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,/@(-?\d+\.\d+),(-?\d+\.\d+)/,/[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*\+?(-?\d+\.\d+)/,/\/(?:search|place|dir)\/(-?\d+\.\d+),\s*\+?(-?\d+\.\d+)/,/^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/];
-  for(const p of pats){ const m=s.match(p); if(m) return {lat:+m[1],lng:+m[2]}; }
-  return null;
-}
-let map=null, marker=null;
-function showMap(){
-  if(!window.L) return;
-  $("map").hidden=false; $("maphint").hidden=false;
-  if(!map){
-    map=L.map("map",{zoomControl:false,attributionControl:true,scrollWheelZoom:false}).setView([S.lat,S.lng],13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(map);
-    const icon=L.divIcon({className:"",html:'<svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 39C15 39 2 23 2 14a13 13 0 0126 0c0 9-13 25-13 25z" fill="#a3232c" stroke="#fbf3e4" stroke-width="2"/><circle cx="15" cy="14" r="5" fill="#d9b25a"/></svg>',iconSize:[30,40],iconAnchor:[15,39]});
-    marker=L.marker([S.lat,S.lng],{draggable:true,icon}).addTo(map);
-    marker.on("dragend",()=>{ const p=marker.getLatLng(); S.lat=p.lat; S.lng=p.lng; status($("locStatus"),"Pin moved","ok"); });
-  }else{
-    marker.setLatLng([S.lat,S.lng]); map.setView([S.lat,S.lng],13);
-  }
-  setTimeout(()=>map.invalidateSize(),50);
-}
-function setLoc(lat,lng,area){
-  S.lat=lat; S.lng=lng; $("area").value=area||""; $("q").value=area||"";
+const ROADS=(...c)=>["in",["get","class"],["literal",c]];
+const MAP_STYLE={version:8,
+  sources:{omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
+  layers:[
+   {id:"bg",type:"background",paint:{"background-color":"#f3f1ea"}},
+   {id:"res",type:"fill",source:"omt","source-layer":"landuse",filter:["==",["get","class"],"residential"],paint:{"fill-color":"#ebe6d6"}},
+   {id:"park",type:"fill",source:"omt","source-layer":"park",paint:{"fill-color":"#e4e4cf"}},
+   {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":"#e3c98a"}},
+   {id:"river",type:"line",source:"omt","source-layer":"waterway",filter:["==",["get","class"],"river"],paint:{"line-color":"#d9b25a","line-width":["interpolate",["linear"],["zoom"],9,1.5,14,4]}},
+   {id:"minor",type:"line",source:"omt","source-layer":"transportation",minzoom:13,filter:ROADS("minor","tertiary"),paint:{"line-color":"#cfd3e6","line-width":1}},
+   {id:"sec",type:"line",source:"omt","source-layer":"transportation",minzoom:11,filter:ROADS("secondary"),paint:{"line-color":"#aab3d6","line-width":["interpolate",["linear"],["zoom"],11,.6,14,2]}},
+   {id:"pri",type:"line",source:"omt","source-layer":"transportation",filter:ROADS("primary"),paint:{"line-color":"#7f8fc7","line-width":["interpolate",["linear"],["zoom"],9,.6,14,2.5]}},
+   {id:"trunk",type:"line",source:"omt","source-layer":"transportation",filter:ROADS("trunk","motorway"),paint:{"line-color":"#26408c","line-width":["interpolate",["linear"],["zoom"],9,1.2,14,4]}}
+  ]};
+let map=null, pin=null;
+const PIN_SVG='<svg class="pin" viewBox="0 0 30 40"><path d="M15 39C15 39 2 23 2 14a13 13 0 0126 0c0 9-13 25-13 25z" fill="#a3232c" stroke="#fbf3e4" stroke-width="2"/><circle cx="15" cy="14" r="5" fill="#d9b25a"/></svg>';
+function setLoc(lat,lng){
+  S.lat=lat; S.lng=lng;
+  const a=nearestArea(lat,lng); $("area").value=a;
+  $("maphint").innerHTML=""; $("maphint").append("Near ");
+  const b=document.createElement("b"); b.textContent=a; $("maphint").append(b, " · drag the pin to adjust");
   status($("locStatus"),"");
-  showMap();
+  if(!map) return;
+  if(!pin){
+    const el=document.createElement("div"); el.innerHTML=PIN_SVG;
+    pin=new maplibregl.Marker({element:el,draggable:true,anchor:"bottom"}).setLngLat([lng,lat]).addTo(map);
+    pin.on("dragend",()=>{ const p=pin.getLngLat(); setLoc(p.lat,p.lng); });
+  } else pin.setLngLat([lng,lat]);
 }
-
-/* ---------- screen 1: area search ---------- */
-// Photon (OpenStreetMap) search, nudged toward Delhi NCR, India only
-const NCR={lat:28.58,lon:77.15};
-let sugg=[], active=-1, qT, qSeq=0;
-function label(p){
-  const name=p.name||p.street||"";
-  const where=[p.district&&p.district!==name?p.district:null, p.city&&p.city!==name?p.city:p.county, p.state].filter(Boolean);
-  return {name, where:[...new Set(where)].slice(0,2).join(", ")};
-}
-function renderSugg(){
-  const ul=$("sugg"); ul.innerHTML="";
-  if(!sugg.length){ ul.hidden=true; $("q").setAttribute("aria-expanded","false"); return; }
-  sugg.forEach((s,i)=>{
-    const li=document.createElement("li"); li.setAttribute("role","option"); if(i===active) li.className="on";
-    if(s.none){ li.className="none"; li.textContent=s.none; }
-    else{ const b=document.createElement("b"); b.textContent=s.name; const sp=document.createElement("span"); sp.textContent=s.where; li.append(b,sp);
-      li.addEventListener("mousedown",ev=>{ev.preventDefault(); pick(i);}); }
-    ul.append(li);
+function initMap(){
+  if(map||!window.maplibregl){ if(!window.maplibregl) status($("locStatus"),"The map didn't load. Check your connection and refresh.","err"); return; }
+  map=new maplibregl.Map({container:"map",style:MAP_STYLE,bounds:NCR_BOUNDS,maxBounds:NCR_MAX,minZoom:8.5,maxZoom:15,
+    dragRotate:false,pitchWithRotate:false,cooperativeGestures:true,attributionControl:{compact:true}});
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
+  AREAS.forEach(([n,lat,lng,major])=>{
+    const el=document.createElement("div"); el.className="lbl "+(major?"major":"minor"); el.textContent=n;
+    new maplibregl.Marker({element:el,anchor:"center"}).setLngLat([lng,lat]).addTo(map);
   });
-  ul.hidden=false; $("q").setAttribute("aria-expanded","true");
+  const zoomLabels=()=>$("map").classList.toggle("hide-minor", map.getZoom()<10.4);
+  map.on("zoom",zoomLabels); zoomLabels();
+  map.on("click",e=>setLoc(e.lngLat.lat,e.lngLat.lng));
+  if(S.lat!=null){ setLoc(S.lat,S.lng); }
 }
-function pick(i){
-  const s=sugg[i]; if(!s||s.none) return;
-  sugg=[]; renderSugg(); $("q").blur();
-  setLoc(s.lat,s.lng,s.name);
-}
-async function search(q){
-  const seq=++qSeq;
-  try{
-    const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=en&lat=${NCR.lat}&lon=${NCR.lon}&location_bias_scale=0.4`);
-    const j=await r.json(); if(seq!==qSeq) return;
-    const seen=new Set();
-    sugg=(j.features||[]).filter(f=>f.properties.countrycode==="IN").map(f=>{const l=label(f.properties); return {...l,lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0]};})
-      .filter(s=>{const k=(s.name+"|"+s.where).toLowerCase(); if(!s.name||seen.has(k)) return false; seen.add(k); return true;}).slice(0,5);
-    if(!sugg.length) sugg=[{none:"No places found. Try a nearby area or landmark."}];
-    active=sugg[0].none?-1:0; renderSugg();
-  }catch{ if(seq===qSeq){ sugg=[{none:"Search isn't loading. Check your connection."}]; active=-1; renderSugg(); } }
-}
-$("q").addEventListener("input",()=>{
-  const v=$("q").value.trim();
-  if(S.lat!=null && v!==$("area").value){ S.lat=S.lng=null; $("area").value=""; $("map").hidden=true; $("maphint").hidden=true; }
-  clearTimeout(qT);
-  if(v.length<2){ sugg=[]; renderSugg(); return; }
-  qT=setTimeout(()=>search(v),250);
-});
-$("q").addEventListener("keydown",e=>{
-  if($("sugg").hidden) return;
-  if(e.key==="ArrowDown"){ e.preventDefault(); active=Math.min(sugg.length-1,active+1); renderSugg(); }
-  else if(e.key==="ArrowUp"){ e.preventDefault(); active=Math.max(0,active-1); renderSugg(); }
-  else if(e.key==="Enter"){ e.preventDefault(); pick(active); }
-  else if(e.key==="Escape"){ sugg=[]; renderSugg(); }
-});
-$("q").addEventListener("blur",()=>setTimeout(()=>{ sugg=[]; renderSugg(); },150));
-
-/* current location, as a shortcut */
-const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-function getPos(opts){ return new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,opts)); }
-$("locBtn").onclick = async () => {
-  const fail = ()=>{ status($("locStatus"),"Couldn't get your location. Just type your area above.","err"); $("q").focus(); };
-  if(!navigator.geolocation || !window.isSecureContext) return fail();
-  status($("locStatus"),"Finding you…");
-  try{
-    let p;
-    try{ p = await getPos({enableHighAccuracy:false, timeout:8000, maximumAge:600000}); }
-    catch(e){ if(e.code===1) throw e; p = await getPos({enableHighAccuracy:true, timeout:15000, maximumAge:0}); }
-    const lat=p.coords.latitude, lng=p.coords.longitude;
-    setLoc(lat,lng,"");
-    status($("locStatus"),"Location found","ok");
-    const a=await reverseArea(lat,lng); if(S.lat===lat){ $("area").value=a; $("q").value=a; }
-  }catch(e){ fail(); }
-};
 $("next1").onclick = async () => {
   const name=$("name").value.trim();
   if(!name) return status($("locStatus"),"Add your name.","err");
-  if(S.lat==null) return status($("locStatus"),"Type where you're coming from and pick it from the list.","err");
+  if(S.lat==null) return status($("locStatus"),"Tap the map to drop your pin first.","err");
   $("hi").textContent="Hi "+name.split(" ")[0];
   show(2);
 };
@@ -445,7 +394,7 @@ function matchRow(p){
   const href=waLink(p); if(href) a.href=href; else { a.classList.add("off"); a.textContent="No number"; }
   r.append(w,a); return r;
 }
-$("edit").onclick=()=>{ show(1); $("q").value=$("area").value; if(S.lat!=null) showMap(); };
+$("edit").onclick=()=>{ show(1); if(!map) initMap(); else { map.resize(); if(S.lat!=null) setLoc(S.lat,S.lng); } };
 
 /* ---------- live board ---------- */
 function openBoard(){ document.body.classList.add("board"); }
@@ -480,6 +429,7 @@ async function load(){
   const me=people.find(p=>p.id===uid);
   if(first){
     first=false;
+    if(!me) initMap();
     if(me){ // returning visitor: straight to matches
       $("name").value=me.name; $("area").value=me.area||""; $("phone").value=me.phone||"";
       S.lat=me.lat; S.lng=me.lng; S.seats=me.seats||2; $("sN").textContent=S.seats;
@@ -490,6 +440,7 @@ async function load(){
   }
   renderMatches(); renderBoard();
 }
+setTimeout(()=>{ if(!map && !$("s1").hidden) initMap(); },2500);
 load(); setInterval(()=>{ if(!document.hidden) load(); },6000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) load(); });
 </script>

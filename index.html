@@ -152,6 +152,15 @@ body.board .scrim{opacity:1;pointer-events:auto}
 .mcard .wa{font-size:14px;padding:12px 10px;text-align:center}
 .mcard .later{font-family:var(--caps);font-size:14px;letter-spacing:.08em;background:none;border:1px solid var(--ink);color:var(--ink);border-radius:20px;padding:11px 10px;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.fw .mcard{transition:none;opacity:1;transform:none}}
+/* missing-field highlight */
+.missing{background:rgba(163,35,44,.10)!important;border-color:rgba(163,35,44,.55)!important;box-shadow:0 0 0 3px rgba(163,35,44,.14);border-radius:4px;animation:nudge .35s ease}
+input.missing{border-bottom-color:var(--crimson)!important}
+input.missing::placeholder{color:rgba(163,35,44,.7)}
+#map.missing{box-shadow:0 0 0 3px rgba(163,35,44,.35),inset 0 0 0 999px rgba(163,35,44,.10)}
+.choice.missing{padding:6px;margin:-6px}
+.fielderr{color:var(--crimson);font-style:italic;font-size:17px;margin-top:-8px;text-align:center}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@media (prefers-reduced-motion:reduce){.missing{animation:none}}
 .toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translate(-50%,140%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:6px;font-size:19px;z-index:40;transition:transform .3s;max-width:90vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .toast.show{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -179,7 +188,7 @@ body.board .scrim{opacity:1;pointer-events:auto}
   <section class="screen" id="s2" hidden>
     <h2 id="hi">Hi</h2>
     <p class="hint">Can you give a lift, or do you need one?</p>
-    <div class="choice">
+    <div class="choice" id="choice">
       <button class="tile" type="button" data-role="give" aria-pressed="false">
         <svg viewBox="0 0 24 24"><path d="M3 15l1.6-5A2 2 0 016.5 8.5h11a2 2 0 011.9 1.5L21 15v3h-2.5M3 15v3h2.5M3 15h18M8.5 18h7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
         <b>I can give one</b><span>I'm driving</span>
@@ -198,7 +207,7 @@ body.board .scrim{opacity:1;pointer-events:auto}
     <div class="small"><input id="phone" type="tel" placeholder="WhatsApp number" autocomplete="tel" maxlength="16"></div>
     <div class="status" id="saveStatus"></div>
     <div class="push">
-      <button class="btn red" id="save" type="button" disabled>Find my matches</button>
+      <button class="btn red" id="save" type="button">Find my matches</button>
       <button class="link" id="sorted" type="button">I'm sorted, just show the board</button>
     </div>
   </section>
@@ -325,7 +334,7 @@ const MAP_STYLE={version:8,glyphs:"https://tiles.openfreemap.org/fonts/{fontstac
 let map=null, pin=null;
 const PIN_SVG='<svg class="pin" viewBox="0 0 30 40"><path d="M15 39C15 39 2 23 2 14a13 13 0 0126 0c0 9-13 25-13 25z" fill="#a3232c" stroke="#fbf3e4" stroke-width="2"/><circle cx="15" cy="14" r="5" fill="#d9b25a"/></svg>';
 function setLoc(lat,lng){
-  S.lat=lat; S.lng=lng;
+  S.lat=lat; S.lng=lng; $("map").classList.remove("missing");
   const a=nearestArea(lat,lng); $("area").value=a;
   $("maphint").innerHTML=""; $("maphint").append("Near ");
   const b=document.createElement("b"); b.textContent=a; $("maphint").append(b, " · drag the pin to adjust");
@@ -355,10 +364,19 @@ function initMap(){
   map.once("load",()=>{ if(S.lat==null) map.fitBounds(NCR_BOUNDS,{animate:false,padding:4}); });
   if(S.lat!=null){ setLoc(S.lat,S.lng); }
 }
+function flag(el,on){ el.classList.remove("missing"); if(on){ void el.offsetWidth; el.classList.add("missing"); } }
+function phoneOk(v){ const d=v.replace(/\D/g,""); return d.length===10 || (d.length===12 && d.startsWith("91")) || (d.length>=11 && d.length<=15 && v.trim().startsWith("+")); }
+$("name").addEventListener("input",()=>{ if($("name").value.trim()) $("name").classList.remove("missing"); });
+$("phone").addEventListener("input",()=>{ if(phoneOk($("phone").value)) $("phone").classList.remove("missing"); });
 $("next1").onclick = async () => {
-  const name=$("name").value.trim();
-  if(!name) return status($("locStatus"),"Add your name.","err");
-  if(S.lat==null) return status($("locStatus"),"Tap the map to drop your pin first.","err");
+  const name=$("name").value.trim(), noName=!name, noPin=S.lat==null;
+  flag($("name"),noName); flag($("map"),noPin);
+  if(noName||noPin){
+    status($("locStatus"), noName&&noPin ? "Add your name and drop your pin on the map." : noName ? "Add your name." : "Tap the map to drop your pin.", "err");
+    (noName?$("name"):$("map")).scrollIntoView({behavior:"smooth",block:"center"}); if(noName) $("name").focus();
+    return;
+  }
+  $("name").classList.remove("missing"); $("map").classList.remove("missing");
   $("hi").textContent="Hi "+name.split(" ")[0];
   show(2);
 };
@@ -368,12 +386,21 @@ function pickRole(r){
   S.role=r;
   document.querySelectorAll(".tile").forEach(t=>t.setAttribute("aria-pressed",t.dataset.role===r));
   $("seatsRow").hidden = r!=="give";
-  $("save").disabled = false;
+  $("choice").classList.remove("missing");
 }
 document.querySelectorAll(".tile").forEach(t=>t.onclick=()=>pickRole(t.dataset.role));
 $("sMinus").onclick=()=>{S.seats=Math.max(1,S.seats-1);$("sN").textContent=S.seats;};
 $("sPlus").onclick=()=>{S.seats=Math.min(7,S.seats+1);$("sN").textContent=S.seats;};
-$("save").onclick=()=>save(S.role);
+$("save").onclick=()=>{
+  const noRole=!S.role, badPhone=!phoneOk($("phone").value);
+  flag($("choice"),noRole); flag($("phone"),badPhone);
+  if(noRole||badPhone){
+    status($("saveStatus"), noRole&&badPhone ? "Pick give or need a lift, and add your WhatsApp number." : noRole ? "Pick whether you can give a lift or need one." : ($("phone").value.trim() ? "That WhatsApp number looks incomplete. Use 10 digits." : "Add your WhatsApp number so matches can message you."), "err");
+    if(badPhone && !noRole) $("phone").focus();
+    return;
+  }
+  save(S.role);
+};
 $("sorted").onclick=()=>save("sorted");
 
 async function save(role){

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Diwali Dinner · Rides</title>
+<title>Diwali Party · Rides</title>
 <meta name="theme-color" content="#1f3d8c">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -127,8 +127,7 @@ body.board .scrim{opacity:1;pointer-events:auto}
 
 <main class="card">
   <header>
-    <h1>Diwali Dinner</h1>
-    <div class="sub">Getting There</div>
+    <h1>Diwali Party</h1>
     <div class="rule"><i></i></div>
   </header>
 
@@ -247,13 +246,28 @@ async function setLoc(lat,lng,label){
 }
 
 /* ---------- screen 1 ---------- */
-$("locBtn").onclick = () => {
-  if(!navigator.geolocation) return status($("locStatus"),"Your browser can't share location. Paste a Maps pin instead.","err");
-  status($("locStatus"),"Finding you…");
-  navigator.geolocation.getCurrentPosition(
-    p => setLoc(p.coords.latitude, p.coords.longitude),
-    e => status($("locStatus"), e.code===1 ? "Location blocked. Allow it in your browser, or paste a Maps pin." : "Couldn't get your location. Paste a Maps pin instead.","err"),
-    {enableHighAccuracy:false, timeout:12000, maximumAge:300000});
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const inApp = /FBAN|FBAV|Instagram|Line\/|Snapchat|; wv\)/i.test(navigator.userAgent);
+function locHelp(code){
+  if(inApp) return "This in-app browser can't share location. Open the link in Safari or Chrome, or paste a Maps pin.";
+  if(code===1) return isIOS
+    ? "Location is blocked. On iPhone: Settings > Privacy & Security > Location Services > Safari Websites > While Using. Or paste a Maps pin."
+    : "Location is blocked. Tap the icon left of the web address > Permissions > Location > Allow, then try again. Or paste a Maps pin.";
+  return "Couldn't get a GPS fix. Turn on Location in your phone settings and try again, or paste a Maps pin.";
+}
+function getPos(opts){ return new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,opts)); }
+$("locBtn").onclick = async () => {
+  if(!navigator.geolocation || !window.isSecureContext) return status($("locStatus"),locHelp(0),"err");
+  status($("locStatus"),"Finding you… allow location if asked.");
+  try{
+    let p;
+    try{ p = await getPos({enableHighAccuracy:false, timeout:10000, maximumAge:600000}); }
+    catch(e){ if(e.code===1) throw e; status($("locStatus"),"Still looking…"); p = await getPos({enableHighAccuracy:true, timeout:20000, maximumAge:0}); }
+    setLoc(p.coords.latitude, p.coords.longitude);
+  }catch(e){
+    status($("locStatus"), locHelp(e.code), "err");
+    $("pin").focus();
+  }
 };
 $("pin").addEventListener("input", () => {
   const v=$("pin").value.trim(); if(!v) return;

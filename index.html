@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Diwali Dinner · Rides</title>
+<meta name="theme-color" content="#1f3d8c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&display=swap">
+
+<script>
+/* ================== SET THESE ================== */
+// 1. The party venue. Leave lat/lng null until you have them.
+const VENUE = { lat: null, lng: null, mapsLink: "" };
+// 2. Within this many km counts as "near you"
+const NEAR_KM = 7;
+/* ============================================== */
+</script>
+
+<style>
+:root{
+  --lapis:#2a4fae; --lapis-deep:#1f3d8c; --gold:#d9b25a; --gold-rule:#c98a3c;
+  --paper:#f3f1ea; --ink:#26408c; --crimson:#a3232c; --muted:#6a76a6; --line:#cfd3e6;
+  --display:"Cinzel Decorative","Cinzel",Georgia,serif;
+  --caps:"Cinzel",Georgia,serif;
+  --body:"Cormorant Garamond",Garamond,Georgia,serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:var(--lapis) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23d9b25a' stroke-width='1.6' opacity='.85'%3E%3Cpath d='M0 60c20-18 40 18 60 0s40 18 60 0'/%3E%3Cpath d='M60 0c-18 20 18 40 0 60s18 40 0 60'/%3E%3C/g%3E%3Cg fill='%23d9b25a'%3E%3Cg transform='translate(30 30)'%3E%3Cellipse rx='4' ry='9' transform='translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(72) translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(144) translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(216) translate(0 -8)'/%3E%3Cellipse rx='4' ry='9' transform='rotate(288) translate(0 -8)'/%3E%3Ccircle r='4' fill='%23b8862e'/%3E%3C/g%3E%3Cg transform='translate(90 90)'%3E%3Cellipse rx='3.5' ry='8' transform='rotate(36) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(108) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(180) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(252) translate(0 -7)'/%3E%3Cellipse rx='3.5' ry='8' transform='rotate(324) translate(0 -7)'/%3E%3Ccircle r='3.5' fill='%23b8862e'/%3E%3C/g%3E%3Cellipse cx='88' cy='34' rx='4' ry='9' transform='rotate(40 88 34)'/%3E%3Cellipse cx='32' cy='86' rx='4' ry='9' transform='rotate(-40 32 86)'/%3E%3Ccircle cx='60' cy='60' r='3'/%3E%3C/g%3E%3C/svg%3E") 0 0/120px 120px;
+  color:var(--ink); font:18px/1.35 var(--body);
+  padding:max(20px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(30px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+}
+.card{
+  max-width:460px;margin:0 auto;background:var(--paper);
+  border:3px solid var(--gold-rule);outline:1px solid var(--gold);outline-offset:-9px;
+  box-shadow:0 0 0 6px var(--lapis-deep),0 14px 40px rgba(0,0,0,.35);
+  padding:38px clamp(22px,7vw,40px) 34px;text-align:center;min-height:min(640px,calc(100svh - 60px));
+  display:flex;flex-direction:column;
+}
+header{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:26px}
+h1{font-family:var(--display);color:var(--crimson);font-size:clamp(30px,9vw,40px);margin:0;line-height:1.05}
+.sub{font-family:var(--caps);font-variant:small-caps;letter-spacing:.16em;font-size:15px}
+.rule{display:flex;align-items:center;gap:6px;margin-top:10px;width:170px}
+.rule::before,.rule::after{content:"";flex:1;height:1px;background:var(--ink)}
+.rule i{width:7px;height:7px;background:var(--crimson);transform:rotate(45deg)}
+h2{font-family:var(--caps);font-weight:600;color:var(--crimson);font-size:17px;letter-spacing:.06em;margin:0 0 4px;text-transform:uppercase}
+.hint{font-style:italic;color:var(--muted);font-size:16px;margin:0 0 18px}
+
+.screen{display:flex;flex-direction:column;gap:16px;flex:1}
+.screen[hidden]{display:none}
+input{width:100%;font:inherit;font-size:20px;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);padding:8px 2px;text-align:center;border-radius:0}
+input::placeholder{color:#9aa2c4;font-style:italic}
+input:focus{outline:none;border-bottom-color:var(--crimson)}
+.small input{font-size:16px}
+
+.btn{font-family:var(--caps);font-weight:600;letter-spacing:.12em;font-size:14px;border:0;border-radius:3px;padding:15px 14px;cursor:pointer;width:100%}
+.btn.red{background:var(--crimson);color:#fbf3e4}
+.btn.blue{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+.btn.done{background:#eae6d6;color:var(--ink);border:1px solid var(--gold-rule)}
+.btn:disabled{opacity:.45;cursor:default}
+.link{background:none;border:0;font:italic 16px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px}
+.or{font-style:italic;color:var(--muted);font-size:15px;margin:-4px 0}
+.status{font-style:italic;font-size:16px;color:var(--muted);min-height:1.3em}
+.status.ok{color:#2f6b3a}
+.status.err{color:var(--crimson)}
+.push{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:18px}
+:focus-visible{outline:2px solid var(--crimson);outline-offset:3px}
+
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:transparent;border:1px solid var(--line);border-radius:4px;padding:20px 8px 16px;cursor:pointer;color:var(--ink);font:inherit;display:flex;flex-direction:column;align-items:center;gap:6px}
+.tile b{font-family:var(--caps);font-size:14px;letter-spacing:.06em}
+.tile span{font-style:italic;font-size:15px;color:var(--muted)}
+.tile svg{width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:1.5}
+.tile[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tile[aria-pressed=true] span{color:#d7dcf0}
+.seats{display:flex;align-items:center;justify-content:center;gap:16px;font-style:italic;color:var(--muted)}
+.seats button{width:36px;height:36px;border-radius:50%;border:1px solid var(--ink);background:transparent;color:var(--ink);font-size:20px;cursor:pointer}
+.seats b{font-style:normal;font-size:24px;color:var(--ink);min-width:1ch}
+
+.match{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 0;border-bottom:1px solid var(--line)}
+.match:last-child{border-bottom:0}
+.match .who{flex:1;min-width:0}
+.match .nm{font-weight:600;font-size:19px}
+.match .meta{font-style:italic;color:var(--muted);font-size:15px}
+.match .tag{color:var(--crimson);font-style:italic;font-size:15px}
+.wa{flex:none;font-family:var(--caps);font-size:12px;letter-spacing:.08em;color:#fff;background:#1f8b4c;border-radius:20px;padding:9px 14px;text-decoration:none}
+.wa.off{background:#b9bfd8;pointer-events:none}
+.group-label{font-family:var(--caps);font-size:12px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin:14px 0 0;text-align:left}
+.empty{font-style:italic;color:var(--muted);padding:12px 0}
+.new{animation:glow 2.4s ease}
+@keyframes glow{0%{background:rgba(217,178,90,.45)}100%{background:transparent}}
+
+/* side tab + live board */
+.tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:20;background:var(--crimson);color:#fbf3e4;border:0;border-radius:6px 0 0 6px;padding:16px 9px calc(16px);cursor:pointer;writing-mode:vertical-rl;font-family:var(--caps);font-size:13px;letter-spacing:.18em;box-shadow:0 4px 14px rgba(0,0,0,.3);padding-right:max(9px,env(safe-area-inset-right))}
+.tab .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#7ee08f;margin-bottom:8px;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.scrim{position:fixed;inset:0;background:rgba(10,20,50,.45);z-index:29;opacity:0;pointer-events:none;transition:opacity .25s}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,92vw);z-index:30;background:var(--paper);border-left:4px solid var(--gold-rule);transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column;padding:max(22px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) 22px}
+body.board .drawer{transform:none}
+body.board .scrim{opacity:1;pointer-events:auto}
+.drawer header{margin-bottom:12px}
+.drawer h1{font-size:26px}
+.close{position:absolute;top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));background:none;border:0;font-size:28px;color:var(--ink);cursor:pointer;line-height:1}
+.counts{display:flex;justify-content:center;gap:18px;font-family:var(--caps);font-size:12px;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+.counts b{display:block;font-size:22px;color:var(--crimson)}
+.rows{overflow:auto;flex:1;margin:0 -6px;padding:0 6px}
+.row{display:flex;align-items:baseline;gap:8px;padding:9px 0;border-bottom:1px dotted var(--line);text-align:left}
+.row .nm{font-weight:600}
+.row .ar{flex:1;min-width:0;font-style:italic;color:var(--muted);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{flex:none;font-family:var(--caps);font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:12px;border:1px solid currentColor}
+.badge.give{color:#1f6b3d}
+.badge.need{color:var(--crimson)}
+.badge.sorted{color:var(--muted)}
+.row.me .nm::after{content:" (you)";font-weight:400;font-style:italic;color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translate(-50%,140%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:6px;font-size:16px;z-index:40;transition:transform .3s;max-width:90vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.toast.show{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<main class="card">
+  <header>
+    <h1>Diwali Dinner</h1>
+    <div class="sub">Getting There</div>
+    <div class="rule"><i></i></div>
+  </header>
+
+  <!-- 1. who + where -->
+  <section class="screen" id="s1">
+    <input id="name" placeholder="Your name" autocomplete="given-name" maxlength="40">
+    <input id="area" placeholder="Coming from (e.g. Saket)" maxlength="60">
+    <button class="btn blue" id="locBtn" type="button">Enter Location</button>
+    <div class="or">or</div>
+    <div class="small"><input id="pin" placeholder="Paste a Google Maps pin" inputmode="url"></div>
+    <div class="status" id="locStatus"></div>
+    <div class="push"><button class="btn red" id="next1" type="button">Next</button></div>
+  </section>
+
+  <!-- 2. give or need -->
+  <section class="screen" id="s2" hidden>
+    <h2 id="hi">Hi</h2>
+    <p class="hint">Can you give a lift, or do you need one?</p>
+    <div class="choice">
+      <button class="tile" type="button" data-role="give" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M3 15l1.6-5A2 2 0 016.5 8.5h11a2 2 0 011.9 1.5L21 15v3h-2.5M3 15v3h2.5M3 15h18M8.5 18h7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+        <b>I can give one</b><span>I'm driving</span>
+      </button>
+      <button class="tile" type="button" data-role="need" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="2.5"/><path d="M12 9v6m0 0l-3 6m3-6l3 6M8 12h8"/></svg>
+        <b>I need one</b><span>pick me up</span>
+      </button>
+    </div>
+    <div class="seats" id="seatsRow" hidden>
+      seats free
+      <button type="button" id="sMinus" aria-label="Fewer seats">&minus;</button>
+      <b id="sN">2</b>
+      <button type="button" id="sPlus" aria-label="More seats">+</button>
+    </div>
+    <div class="small"><input id="phone" type="tel" placeholder="WhatsApp number" autocomplete="tel" maxlength="16"></div>
+    <div class="status" id="saveStatus"></div>
+    <div class="push">
+      <button class="btn red" id="save" type="button" disabled>Find my matches</button>
+      <button class="link" id="sorted" type="button">I'm sorted, just show the board</button>
+    </div>
+  </section>
+
+  <!-- 3. matches -->
+  <section class="screen" id="s3" hidden>
+    <h2 id="mTitle">Your matches</h2>
+    <p class="hint" id="mHint"></p>
+    <div id="matches"></div>
+    <div class="push">
+      <a class="btn blue" id="venueBtn" target="_blank" rel="noopener" hidden style="text-decoration:none">Directions to the party</a>
+      <button class="link" id="edit" type="button">Change my details</button>
+    </div>
+  </section>
+</main>
+
+<button class="tab" id="tab" type="button" aria-label="Open live board"><span class="dot"></span>LIVE BOARD</button>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" aria-label="Live board">
+  <button class="close" id="close" type="button" aria-label="Close">&times;</button>
+  <header>
+    <h1>Who's Coming</h1>
+    <div class="rule"><i></i></div>
+  </header>
+  <div class="counts">
+    <div><b id="cGive">0</b>giving lifts</div>
+    <div><b id="cNeed">0</b>need lifts</div>
+    <div><b id="cAll">0</b>coming</div>
+  </div>
+  <div class="rows" id="rows"><p class="empty">No one yet.</p></div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const S = { lat:null, lng:null, role:null, seats:2 };
+let people = [], seenMatches = null;
+let uid, key;
+try{ uid=localStorage.getItem("rid"); key=localStorage.getItem("rkey"); }catch(e){}
+if(!uid||!key){ uid=crypto.randomUUID(); key=crypto.randomUUID(); try{ localStorage.setItem("rid",uid); localStorage.setItem("rkey",key); }catch(e){} }
+
+/* ---------- screens ---------- */
+function show(n){ ["s1","s2","s3"].forEach((s,i)=>$(s).hidden = i!==n-1); window.scrollTo(0,0); }
+function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("show"),4200); }
+function status(el,t,cls=""){ el.textContent=t; el.className="status "+cls; }
+
+/* ---------- geo helpers ---------- */
+const km = (a,b) => { const R=6371, r=Math.PI/180, dLa=(b.lat-a.lat)*r, dLo=(b.lng-a.lng)*r;
+  const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
+const fmtKm = d => d<1 ? "under 1 km away" : Math.round(d)+" km away";
+
+async function reverseArea(lat,lng){
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&lat=${lat}&lon=${lng}`,{headers:{"Accept-Language":"en"}});
+    const a = (await r.json()).address||{};
+    return a.suburb||a.neighbourhood||a.city_district||a.town||a.city||a.county||"";
+  }catch{ return ""; }
+}
+async function geocode(q){
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(q)}`,{headers:{"Accept-Language":"en"}});
+    const j = await r.json(); return j[0] ? {lat:+j[0].lat,lng:+j[0].lon} : null;
+  }catch{ return null; }
+}
+function parsePin(s){
+  s = decodeURIComponent(s||"");
+  const pats=[/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,/@(-?\d+\.\d+),(-?\d+\.\d+)/,/[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*\+?(-?\d+\.\d+)/,/\/(?:search|place|dir)\/(-?\d+\.\d+),\s*\+?(-?\d+\.\d+)/,/^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/];
+  for(const p of pats){ const m=s.match(p); if(m) return {lat:+m[1],lng:+m[2]}; }
+  return null;
+}
+async function setLoc(lat,lng,label){
+  S.lat=lat; S.lng=lng;
+  if(!$("area").value.trim()){ const a = await reverseArea(lat,lng); if(a) $("area").value=a; }
+  status($("locStatus"), "Location set"+(label?" · "+label:""), "ok");
+  $("locBtn").textContent="Location added"; $("locBtn").className="btn done";
+}
+
+/* ---------- screen 1 ---------- */
+$("locBtn").onclick = () => {
+  if(!navigator.geolocation) return status($("locStatus"),"Your browser can't share location. Paste a Maps pin instead.","err");
+  status($("locStatus"),"Finding you…");
+  navigator.geolocation.getCurrentPosition(
+    p => setLoc(p.coords.latitude, p.coords.longitude),
+    e => status($("locStatus"), e.code===1 ? "Location blocked. Allow it in your browser, or paste a Maps pin." : "Couldn't get your location. Paste a Maps pin instead.","err"),
+    {enableHighAccuracy:false, timeout:12000, maximumAge:300000});
+};
+$("pin").addEventListener("input", () => {
+  const v=$("pin").value.trim(); if(!v) return;
+  const hit=parsePin(v);
+  if(hit) return setLoc(hit.lat,hit.lng,"from pin");
+  if(/^https?:\/\//.test(v)){
+    clearTimeout(pinT); pinT=setTimeout(async()=>{
+      status($("locStatus"),"Reading pin…");
+      try{ const r=await fetch("/api/pin?url="+encodeURIComponent(v)); const j=await r.json();
+        if(r.ok) setLoc(j.lat,j.lng,"from pin"); else status($("locStatus"),j.error||"Couldn't read that pin. Tap Enter Location instead.","err");
+      }catch{ status($("locStatus"),"Couldn't read that pin. Tap Enter Location instead.","err"); }
+    },400);
+  }
+});
+let pinT;
+$("next1").onclick = async () => {
+  const name=$("name").value.trim(), area=$("area").value.trim();
+  if(!name) return status($("locStatus"),"Add your name.","err");
+  if(S.lat==null){
+    if(!area) return status($("locStatus"),"Tap Enter Location, or tell us where you're coming from.","err");
+    status($("locStatus"),"Looking up "+area+"…");
+    const g=await geocode(area);
+    if(!g) return status($("locStatus"),"Couldn't find "+area+". Try Enter Location.","err");
+    S.lat=g.lat; S.lng=g.lng;
+  }
+  $("hi").textContent="Hi "+name.split(" ")[0];
+  show(2);
+};
+
+/* ---------- screen 2 ---------- */
+function pickRole(r){
+  S.role=r;
+  document.querySelectorAll(".tile").forEach(t=>t.setAttribute("aria-pressed",t.dataset.role===r));
+  $("seatsRow").hidden = r!=="give";
+  $("save").disabled = false;
+}
+document.querySelectorAll(".tile").forEach(t=>t.onclick=()=>pickRole(t.dataset.role));
+$("sMinus").onclick=()=>{S.seats=Math.max(1,S.seats-1);$("sN").textContent=S.seats;};
+$("sPlus").onclick=()=>{S.seats=Math.min(7,S.seats+1);$("sN").textContent=S.seats;};
+$("save").onclick=()=>save(S.role);
+$("sorted").onclick=()=>save("sorted");
+
+async function save(role){
+  const rec = {
+    name:$("name").value.trim().slice(0,40),
+    area:$("area").value.trim().slice(0,60),
+    lat:Math.round(S.lat*1000)/1000, lng:Math.round(S.lng*1000)/1000,   // ~100 m, not your doorstep
+    role, seats: role==="give"?S.seats:0,
+    phone:$("phone").value.replace(/[^\d+]/g,"").slice(0,16),
+    id:uid, key
+  };
+  $("save").disabled=true; status($("saveStatus"),"Saving…");
+  try{
+    const r=await fetch("/api/riders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(rec)});
+    if(!r.ok) throw new Error();
+    await load();
+    status($("saveStatus"),"");
+    seenMatches=null;
+    if(role==="sorted"){ show(3); openBoard(); } else show(3);
+    renderMatches();
+  }catch(e){ status($("saveStatus"),"Couldn't save. Check your connection and try again.","err"); $("save").disabled=false; }
+}
+
+/* ---------- screen 3: matches ---------- */
+function waLink(p){
+  let n=(p.phone||"").replace(/[^\d]/g,"");
+  if(n.length===10) n="91"+n;
+  if(n.length<10) return "";
+  const msg = p.role==="need" ? `Hey ${p.name}! I'm driving to the Diwali dinner and have space. Want a lift?` : `Hey ${p.name}! Saw you're driving to the Diwali dinner. Any space for me?`;
+  return `https://wa.me/${n}?text=${encodeURIComponent(msg)}`;
+}
+function myMatches(){
+  const me=people.find(p=>p.id===uid); if(!me||me.role==="sorted") return {me,list:[]};
+  const want = me.role==="give" ? "need" : "give";
+  const venue = VENUE.lat!=null ? {lat:VENUE.lat,lng:VENUE.lng} : null;
+  const list = people.filter(p=>p.id!==uid && p.role===want && p.lat!=null).map(p=>{
+    const d=km(me,p);
+    // on the way: small detour for the driver
+    let detour=null;
+    if(venue){ const drv = me.role==="give"?me:p, pas = me.role==="give"?p:me;
+      detour = km(drv,pas)+km(pas,venue)-km(drv,venue); }
+    const near = d<=NEAR_KM || (detour!=null && detour<=4);
+    return {...p, d, near, onWay: detour!=null && detour<=4 && d>NEAR_KM};
+  }).sort((a,b)=>a.d-b.d);
+  return {me,list};
+}
+function renderMatches(){
+  const {me,list}=myMatches(); const box=$("matches"); box.innerHTML="";
+  if(!me){ return; }
+  if(me.role==="sorted"){
+    $("mTitle").textContent="You're on the board"; $("mHint").textContent="Open the live board on the side to see everyone.";
+  }else{
+    const near=list.filter(x=>x.near);
+    const what = me.role==="give" ? (near.length===1?"person near you needs a lift":"people near you need a lift") : (near.length===1?"car going from near you":"cars going from near you");
+    $("mTitle").textContent = near.length ? `${near.length} ${what}` : "No matches nearby yet";
+    $("mHint").textContent = near.length ? "Tap WhatsApp to sort it out." : "Keep this open. New matches pop up here as people join.";
+    const add=(label,arr)=>{ if(!arr.length) return; const l=document.createElement("div"); l.className="group-label"; l.textContent=label; box.append(l); arr.forEach(p=>box.append(matchRow(p))); };
+    add(near.length?"Near you":"", near);
+    add("Further out", list.filter(x=>!x.near));
+    if(!list.length){ const e=document.createElement("p"); e.className="empty"; e.textContent = me.role==="give"?"No one has asked for a lift yet.":"No one has offered a lift yet."; box.append(e); }
+    // notify about new nearby matches
+    const ids=new Set(near.map(x=>x.id));
+    if(seenMatches){ const fresh=near.filter(x=>!seenMatches.has(x.id)); if(fresh.length){ const f=fresh[0]; toast(me.role==="give"?`${f.name} near ${f.area||"you"} needs a lift`:`${f.name} from ${f.area||"near you"} has space`); fresh.forEach(x=>{const el=box.querySelector(`[data-id="${CSS.escape(x.id)}"]`); el&&el.classList.add("new");}); } }
+    seenMatches=ids;
+  }
+  if(VENUE.mapsLink || VENUE.lat!=null){ const v=$("venueBtn"); v.hidden=false; v.href = VENUE.mapsLink || `https://www.google.com/maps/dir/?api=1&destination=${VENUE.lat},${VENUE.lng}`; }
+}
+function matchRow(p){
+  const r=document.createElement("div"); r.className="match"; r.dataset.id=p.id;
+  const w=document.createElement("div"); w.className="who";
+  const n=document.createElement("div"); n.className="nm"; n.textContent=p.name;
+  const m=document.createElement("div"); m.className="meta"; m.textContent=[p.area, fmtKm(p.d)].filter(Boolean).join(" · ");
+  w.append(n,m);
+  if(p.role==="give"){ const t=document.createElement("div"); t.className="tag"; t.textContent=p.seats+" seat"+(p.seats>1?"s":"")+" free"; w.append(t); }
+  if(p.onWay){ const t=document.createElement("div"); t.className="tag"; t.textContent="on the way"; w.append(t); }
+  const a=document.createElement("a"); a.className="wa"; a.textContent="WhatsApp"; a.target="_blank"; a.rel="noopener";
+  const href=waLink(p); if(href) a.href=href; else { a.classList.add("off"); a.textContent="No number"; }
+  r.append(w,a); return r;
+}
+$("edit").onclick=()=>{ show(1); $("locBtn").textContent=S.lat!=null?"Location added":"Enter Location"; };
+
+/* ---------- live board ---------- */
+function openBoard(){ document.body.classList.add("board"); }
+$("tab").onclick=openBoard;
+$("close").onclick=$("scrim").onclick=()=>document.body.classList.remove("board");
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") document.body.classList.remove("board"); });
+function renderBoard(){
+  const order={give:0,need:1,sorted:2};
+  const list=[...people].sort((a,b)=>order[a.role]-order[b.role] || (a.area||"").localeCompare(b.area||""));
+  $("cGive").textContent=people.filter(p=>p.role==="give").length;
+  $("cNeed").textContent=people.filter(p=>p.role==="need").length;
+  $("cAll").textContent=people.length;
+  const rows=$("rows"); rows.innerHTML="";
+  if(!list.length){ rows.innerHTML='<p class="empty">No one yet. Be the first.</p>'; return; }
+  list.forEach(p=>{
+    const r=document.createElement("div"); r.className="row"+(p.id===uid?" me":"");
+    const n=document.createElement("span"); n.className="nm"; n.textContent=p.name;
+    const a=document.createElement("span"); a.className="ar"; a.textContent=p.area||"";
+    const b=document.createElement("span"); b.className="badge "+p.role;
+    b.textContent = p.role==="give" ? `${p.seats} seat${p.seats>1?"s":""}` : p.role==="need" ? "needs lift" : "sorted";
+    r.append(n,a,b); rows.append(r);
+  });
+}
+
+/* ---------- boot: poll the list every few seconds ---------- */
+let first=true;
+async function load(){
+  try{
+    const r=await fetch("/api/riders",{cache:"no-store"}); if(!r.ok) throw 0;
+    people=(await r.json()).filter(p=>p.name);
+  }catch{ return; }
+  const me=people.find(p=>p.id===uid);
+  if(first){
+    first=false;
+    if(me){ // returning visitor: straight to matches
+      $("name").value=me.name; $("area").value=me.area||""; $("phone").value=me.phone||"";
+      S.lat=me.lat; S.lng=me.lng; S.seats=me.seats||2; $("sN").textContent=S.seats;
+      $("hi").textContent="Hi "+me.name.split(" ")[0];
+      if(me.role!=="sorted") pickRole(me.role);
+      show(3);
+    }
+  }
+  renderMatches(); renderBoard();
+}
+load(); setInterval(()=>{ if(!document.hidden) load(); },6000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) load(); });
+</script>
+</body>
+</html>
